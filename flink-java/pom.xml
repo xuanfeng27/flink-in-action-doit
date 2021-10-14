@@ -17,6 +17,7 @@
             <groupId>org.apache.flink</groupId>
             <artifactId>flink-java</artifactId>
             <version>${flink.version}</version>
+            <!-- provided编译时引入依赖，但是打包时不引入依赖 -->
 <!--            <scope>provided</scope>-->
         </dependency>
         <dependency>
