@@ -16,7 +16,7 @@ public class RealTimeWordCount {
         //2.调用Env的Source方法创建DataStream
         //spark hadoop flink
         //hive hadoop hbase
-        DataStream<String> lines = env.socketTextStream("node-1.51doit.cn", 8888);
+        DataStream<String> lines = env.socketTextStream(args[0], Integer.parseInt(args[1]));
 
         //3.调用Transformation（s）
         SingleOutputStreamOperator<String> words = lines.flatMap(new FlatMapFunction<String, String>() {
