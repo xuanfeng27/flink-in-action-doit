@@ -32,14 +32,17 @@ public class MapDemo {
 
         DataStreamSource<String> lines = env.socketTextStream("localhost", 8888);
 
-//        SingleOutputStreamOperator<String> upperStream = lines.map(new MapFunction<String, String>() {
-//            @Override
-//            public String map(String value) throws Exception {
-//                return value.toUpperCase();
-//            }
-//        });
+        //
+        MapFunction<String, String> mapFunction = new MapFunction<String, String>() {
+            @Override
+            public String map(String value) throws Exception {
+                return value.toUpperCase();
+            }
+        };
 
-        SingleOutputStreamOperator<String> upperStream = lines.transform("MyMap", TypeInformation.of(String.class), new MyStreamMap());
+        SingleOutputStreamOperator<String> upperStream = lines.map(mapFunction);
+
+        //SingleOutputStreamOperator<String> upperStream = lines.transform("MyMap", TypeInformation.of(String.class), new MyStreamMap());
 
         upperStream.print();
 
@@ -63,7 +66,8 @@ public class MapDemo {
             //将输入的数据变大写
             String upper = in.toUpperCase();
             //将数据输出
-            output.collect(new StreamRecord<>(upper));
+            //output.collect(new StreamRecord<>(upper));
+            output.collect(element.replace(upper));
         }
     }
 
