@@ -9,6 +9,7 @@ import org.apache.flink.streaming.api.checkpoint.CheckpointedFunction;
 import org.apache.flink.streaming.api.functions.source.RichParallelSourceFunction;
 
 import java.io.RandomAccessFile;
+import java.util.Collections;
 import java.util.UUID;
 
 /**
@@ -28,7 +29,7 @@ public class MyAtLeastOnceFileSource extends RichParallelSourceFunction<String> 
     private boolean flag = true;
     private long offset = 0;
     //使用transient修饰的变量，不参与序列化和反序列号
-    private transient String path;
+    private String path;
 
     private transient ListState<Long> listState;
 
@@ -47,7 +48,6 @@ public class MyAtLeastOnceFileSource extends RichParallelSourceFunction<String> 
                 this.offset = offset;
             }
         }
-
     }
 
     @Override
@@ -56,6 +56,7 @@ public class MyAtLeastOnceFileSource extends RichParallelSourceFunction<String> 
         int indexOfThisSubtask = getRuntimeContext().getIndexOfThisSubtask();
 
         RandomAccessFile raf = new RandomAccessFile(path + "/" + indexOfThisSubtask + ".txt", "r");
+        //seek到指定的偏移量
         raf.seek(offset);
         while (flag) {
             String line = raf.readLine();
@@ -84,10 +85,11 @@ public class MyAtLeastOnceFileSource extends RichParallelSourceFunction<String> 
      */
     @Override
     public void snapshotState(FunctionSnapshotContext context) throws Exception {
-        //青春以前的状态
+        //清除以前的状态
         listState.clear();
         //将最新的偏移量存储起来
         listState.add(offset);
+        //listState.update(Collections.singletonList(offset));
     }
 
 
