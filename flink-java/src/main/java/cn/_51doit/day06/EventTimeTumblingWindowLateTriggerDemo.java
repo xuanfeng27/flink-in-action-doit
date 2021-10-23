@@ -31,6 +31,9 @@ public class EventTimeTumblingWindowLateTriggerDemo {
         configuration.setInteger("rest.port", 8081);
         StreamExecutionEnvironment env = StreamExecutionEnvironment.createLocalEnvironmentWithWebUI(configuration);
 
+        //生成WaterMark的时间周期
+        env.getConfig().setAutoWatermarkInterval(200);
+
         //使用老的API
         env.setStreamTimeCharacteristic(TimeCharacteristic.EventTime);
 
@@ -52,7 +55,7 @@ public class EventTimeTumblingWindowLateTriggerDemo {
         //提取数据中的时间
         //（触发EventTime类型窗口执行的信号机制）
         //设置窗口延迟触发的时间为2秒
-        SingleOutputStreamOperator<Tuple3<Long, String, Integer>> wordAndCountWithMaterMark = tpStream.assignTimestampsAndWatermarks(new BoundedOutOfOrdernessTimestampExtractor<Tuple3<Long, String, Integer>>(Time.seconds(2)) {
+        SingleOutputStreamOperator<Tuple3<Long, String, Integer>> wordAndCountWithMaterMark = tpStream.assignTimestampsAndWatermarks(new BoundedOutOfOrdernessTimestampExtractor<Tuple3<Long, String, Integer>>(Time.seconds(0)) {
             @Override
             public long extractTimestamp(Tuple3<Long, String, Integer> tp) {
                 return tp.f0;
