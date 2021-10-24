@@ -30,6 +30,9 @@ import java.util.Properties;
  *
  * 3.创建redis sink
  *
+ *
+ * 将程序提交到集群中运行，并且是hdfs（hadoop3.x）作为state backend，必须将flink-shaded-hadoop-3-uber-3.1.1.7.1.1.0-565-9.0
+ * 放到flink安装包的lib目录下，然后重启flink的standalone集群
  */
 
 public class KafkaToRedisWordCount {
