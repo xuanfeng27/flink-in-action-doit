@@ -6,6 +6,7 @@ import org.apache.flink.api.java.tuple.Tuple2;
 import org.apache.flink.runtime.state.filesystem.FsStateBackend;
 import org.apache.flink.streaming.api.datastream.DataStreamSource;
 import org.apache.flink.streaming.api.datastream.SingleOutputStreamOperator;
+import org.apache.flink.streaming.api.environment.CheckpointConfig;
 import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
 import org.apache.flink.streaming.connectors.kafka.FlinkKafkaConsumer;
 import org.apache.flink.streaming.connectors.redis.RedisSink;
@@ -33,6 +34,20 @@ import java.util.Properties;
  *
  * 将程序提交到集群中运行，并且是hdfs（hadoop3.x）作为state backend，必须将flink-shaded-hadoop-3-uber-3.1.1.7.1.1.0-565-9.0
  * 放到flink安装包的lib目录下，然后重启flink的standalone集群
+ *
+ * 使用命令行将job停掉
+ * （cancle方法已经标记为过时，建议使用stop）
+ * bin/flink cancel -s savepoint的目录 jobid
+ * bin/flink cancel -s hdfs://node-1.51doit.cn:9000/sp26 60e5725992e9b6ee45d62c5e908b266f
+ *
+ * 建议使用stop将job停掉（-p指定savepoint的路径）
+ * /bigdata/flink-1.13.2/bin/flink stop -p hdfs://node-1.51doit.cn:9000/sp25 e9aa51ec5ccad0d2a6ca0956683981fa
+ *
+ * 使用命令启动job，并且指定job的以前做的savepoint或checkpoint目录，用了恢复状态
+ * -s 指定savepoint或checkpoint的目录，该目录下一定要有_metadata文件
+ * /bigdata/flink-1.13.2/bin/flink run -c cn._51doit.day08.KafkaToRedisWordCount -p 4 -s hdfs://node-1.51doit.cn:9000/sp26/savepoint-60e572-08ad6ec182b1 /root/flink-java-1.0-SNAPSHOT.jar
+ *
+ *
  */
 
 public class KafkaToRedisWordCount {
@@ -42,7 +57,10 @@ public class KafkaToRedisWordCount {
         StreamExecutionEnvironment env = StreamExecutionEnvironment.getExecutionEnvironment();
         //开启checkpoint，那就把kafka的偏移量保存到状态中了，checkpoint时会将状态持久化到statebackend中
         env.enableCheckpointing(10000);
-
+        //任务cancel保留外部存储checkpoint
+        //如果不设置该属性DELETE_ON_CANCELLATION（job被cancel后，会删除外部的checkpoint数据）
+        //一定要加上这是属性RETAIN_ON_CANCELLATION(job被cancel后，保留外部的checkpoint数据)
+        env.getCheckpointConfig().enableExternalizedCheckpoints(CheckpointConfig.ExternalizedCheckpointCleanup.RETAIN_ON_CANCELLATION);
         //设置statebackend(设置状态存储的后端)
         env.setStateBackend(new FsStateBackend("hdfs://node-1.51doit.cn:9000/chk26"));
 
