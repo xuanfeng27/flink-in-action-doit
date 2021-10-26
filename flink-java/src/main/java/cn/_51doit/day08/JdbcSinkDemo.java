@@ -2,9 +2,16 @@ package cn._51doit.day08;
 
 import org.apache.flink.api.common.functions.MapFunction;
 import org.apache.flink.api.java.tuple.Tuple2;
+import org.apache.flink.connector.jdbc.JdbcConnectionOptions;
+import org.apache.flink.connector.jdbc.JdbcExecutionOptions;
+import org.apache.flink.connector.jdbc.JdbcSink;
+import org.apache.flink.connector.jdbc.JdbcStatementBuilder;
 import org.apache.flink.streaming.api.datastream.DataStreamSource;
 import org.apache.flink.streaming.api.datastream.SingleOutputStreamOperator;
 import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
+
+import java.sql.PreparedStatement;
+import java.sql.SQLException;
 
 /**
  *
@@ -22,7 +29,7 @@ import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
  */
 public class JdbcSinkDemo {
 
-    public static void main(String[] args) {
+    public static void main(String[] args) throws Exception {
 
         StreamExecutionEnvironment env = StreamExecutionEnvironment.getExecutionEnvironment();
         //uid,addCart
@@ -38,30 +45,34 @@ public class JdbcSinkDemo {
             }
         });
 
-//        tpStream.addSink(
-//                JdbcSink.sink(
-//                        "insert into books (id, title, authors, year) values (?, ?, ?, ?)",
-//                        (statement, book) -> {
-//                            statement.setLong(1, book.id);
-//                            statement.setString(2, book.title);
-//                            statement.setString(3, book.authors);
-//                            statement.setInt(4, book.year);
-//                        },
-//                        JdbcExecutionOptions.builder()
-//                                .withBatchSize(1000)
-//                                .withBatchIntervalMs(200)
-//                                .withMaxRetries(5)
-//                                .build(),
-//                        new JdbcConnectionOptions.JdbcConnectionOptionsBuilder()
-//                                .withUrl("jdbc:postgresql://dbhost:5432/postgresdb")
-//                                .withDriverName("org.postgresql.Driver")
-//                                .withUsername("someUser")
-//                                .withPassword("somePassword")
-//                                .build()
-//                ));
-//        )
+        tpStream.addSink(
+                JdbcSink.sink(
+                        "insert into tb_events (uid, event_type) values (?, ?)",
+                        new JdbcStatementBuilder<Tuple2<String, String>>() {
+                            @Override
+                            public void accept(PreparedStatement preparedStatement, Tuple2<String, String> tp) throws SQLException {
+                                //绑定参数
+                                preparedStatement.setString(1, tp.f0);
+                                preparedStatement.setString(2, tp.f1);
+                            }
+                        },
+                        //执行选项
+                        JdbcExecutionOptions.builder()
+                                .withBatchSize(1000) //批量写入的数据条数
+                                .withBatchIntervalMs(5000) //达到多长时间写入一次
+                                .withMaxRetries(100) //如果写入失败，重试次数
+                                .build(),
+                        new JdbcConnectionOptions.JdbcConnectionOptionsBuilder()
+                                .withUrl("jdbc:mysql://node-3.51doit.cn:3306/doit?characterEncoding=utf-8")
+                                .withDriverName("com.mysql.jdbc.Driver")
+                                .withUsername("root")
+                                .withPassword("123456")
+                                .build()
+                )
+        );
 
 
+        env.execute();
     }
 
 
