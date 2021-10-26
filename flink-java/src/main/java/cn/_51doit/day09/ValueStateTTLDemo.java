@@ -28,6 +28,12 @@ import java.util.Map;
  *
  * 需求：统计最近两小时的成交金额（保留当前小时和上一个小时的数据）
  * 为了效果演示更加明显，设置状态的存活时间为1分钟
+ *
+ * .setUpdateType(StateTtlConfig.UpdateType.OnCreateAndWrite) //OnCreateAndWrite(默认的)，当创建和修改该key对应的value，就会重新对TTL计时
+ * .setUpdateType(StateTtlConfig.UpdateType.OnReadAndWrite) //创建、修改、读取TTL都会重新计时
+ * .setStateVisibility(StateTtlConfig.StateVisibility.NeverReturnExpired) //设置状态的可见性：默认的，如果超时，就不会再返回（就访问不到了）
+ * .setStateVisibility(StateTtlConfig.StateVisibility.ReturnExpiredIfNotCleanedUp) //即使超时了，但是还没有被清除掉，也可以使用
+ *
  */
 public class ValueStateTTLDemo {
 
@@ -70,9 +76,11 @@ public class ValueStateTTLDemo {
             MapStateDescriptor<String, Double> stateDescriptor = new MapStateDescriptor<>("hourly-state", String.class, Double.class);
             //给状态秒描述器设置TTL
             StateTtlConfig ttlConfig = StateTtlConfig.newBuilder(Time.minutes(1))
+                    //设置TTL的更新类型
                     .setUpdateType(StateTtlConfig.UpdateType.OnCreateAndWrite) //OnCreateAndWrite(默认的)，当创建和修改该key对应的value，就会重新对TTL计时
                     //.setUpdateType(StateTtlConfig.UpdateType.OnReadAndWrite) //创建、修改、读取TTL都会重新计时
-                    .setStateVisibility(StateTtlConfig.StateVisibility.NeverReturnExpired) //设置状态的可见性：默认的，如果超时，就不会再返回（就访问不到了）
+                    //设置状态可见性
+                    .setStateVisibility(StateTtlConfig.StateVisibility.NeverReturnExpired) //默认的，如果超时，就不会再返回（就访问不到了）
                     //.setStateVisibility(StateTtlConfig.StateVisibility.ReturnExpiredIfNotCleanedUp) //即使超时了，但是还没有被清除掉，也可以使用
                     .build();//为了效果，我这里设置状态最多保存1分钟
             //将TTLConfig关联到状态描述器
