@@ -20,7 +20,7 @@ import java.util.List;
 /**
  * 只有KeyedStream，使用KeyedProcessFunction才可以使用定时器
  *
- * 使用ProcessingTime注册定时器
+ * 使用ProcessingTime注册定时器，实现类似滚动窗口的功能
  */
 public class ProcessingTimeTimer {
 
