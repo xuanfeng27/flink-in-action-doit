@@ -8,25 +8,23 @@ import org.apache.flink.configuration.Configuration;
 import org.apache.flink.streaming.api.TimeCharacteristic;
 import org.apache.flink.streaming.api.datastream.DataStream;
 import org.apache.flink.streaming.api.datastream.DataStreamSource;
+import org.apache.flink.streaming.api.datastream.KeyedStream;
 import org.apache.flink.streaming.api.datastream.SingleOutputStreamOperator;
 import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
+import org.apache.flink.streaming.api.functions.co.ProcessJoinFunction;
 import org.apache.flink.streaming.api.functions.timestamps.BoundedOutOfOrdernessTimestampExtractor;
 import org.apache.flink.streaming.api.windowing.assigners.TumblingEventTimeWindows;
 import org.apache.flink.streaming.api.windowing.time.Time;
 import org.apache.flink.util.Collector;
 
 /**
- * 两个数据流，使用EventTime划分窗口，实现LeftOuterJoin
- *
- * 窗口触发的条件为，每一个流，每一个分区都有满足窗口触发的条件
- *  - 每个分区的WaterMark为该分区中最大的EventTime - 延迟时间
- *  - 窗口内所有subtask的waterMark为上游生成WaterMarter所有分区中最下的作为每个分区即该窗口的WaterMark
- *
- *
+ * 两个数据流，使用EventTime划分窗口，按照时间范围进行join
+ * Interval join是将两个流Connect到一起，再按照相同条件进行keyBy，然后将各自的数据缓存到共享的状态中
+ * 并且设置共享状态（KeyedState）的TTL，如果在一定的时间范围内能够找到相同条件的数据，那么join上了
  *
  *
  */
-public class EventTimeTumblingWindowLeftOuterJoinDemo {
+public class EventTimeIntervalJoinDemo {
 
     public static void main(String[] args) throws Exception {
 
@@ -80,37 +78,22 @@ public class EventTimeTumblingWindowLeftOuterJoinDemo {
             }
         });
 
-        //实现左外连接(coGroup协同分组，就是将两个流按照相同的条件进行keyBy)
-        DataStream<Tuple5<Long, String, Integer, Long, String>> joiendStream = leftStreamWithWaterMark.coGroup(rightStreamWithWaterMark)
-                .where(t1 -> t1.f1)
-                .equalTo(t2 -> t2.f1)
-                .window(TumblingEventTimeWindows.of(Time.seconds(10)))
-                .apply(new CoGroupFunction<Tuple3<Long, String, Integer>, Tuple3<Long, String, String>, Tuple5<Long, String, Integer, Long, String>>() {
+        KeyedStream<Tuple3<Long, String, Integer>, String> leftKeyedStream = leftStreamWithWaterMark.keyBy(t -> t.f1);
 
-                    /**
-                     * 窗口触发后，只要key在任何一个流中出现，就会调用一次coGroup
-                     * @param first
-                     * @param second
-                     * @param out
-                     * @throws Exception
-                     */
+        KeyedStream<Tuple3<Long, String, String>, String> rightKeyedStream = rightStreamWithWaterMark.keyBy(t -> t.f1);
+
+        SingleOutputStreamOperator<Tuple5<Long, String, Integer, Long, String>> res = leftKeyedStream.intervalJoin(rightKeyedStream)
+                .between(Time.seconds(-1), Time.seconds(1)) //以当前时间为时间标准，向前1秒，向后1秒，可以join上
+                .lowerBoundExclusive() //前开后闭区间
+                .process(new ProcessJoinFunction<Tuple3<Long, String, Integer>, Tuple3<Long, String, String>, Tuple5<Long, String, Integer, Long, String>>() {
+                    //当条件相同的数据，并且在一定的时间范围内
                     @Override
-                    public void coGroup(Iterable<Tuple3<Long, String, Integer>> first, Iterable<Tuple3<Long, String, String>> second, Collector<Tuple5<Long, String, Integer, Long, String>> out) throws Exception {
-                        //实现左外连接
-                        for (Tuple3<Long, String, Integer> left : first) {
-                            boolean isJoined = false;
-                            for (Tuple3<Long, String, String> right : second) {
-                                isJoined = true;
-                                out.collect(Tuple5.of(left.f0, left.f1, left.f2, right.f0, right.f2));
-                            }
-                            if (!isJoined) {
-                                out.collect(Tuple5.of(left.f0, left.f1, left.f2, null, null));
-                            }
-                        }
+                    public void processElement(Tuple3<Long, String, Integer> left, Tuple3<Long, String, String> right, Context ctx, Collector<Tuple5<Long, String, Integer, Long, String>> out) throws Exception {
+                        out.collect(Tuple5.of(left.f0, left.f1, left.f2, right.f0, right.f2));
                     }
                 });
 
-        joiendStream.print();
+        res.print();
 
         env.execute();
 
