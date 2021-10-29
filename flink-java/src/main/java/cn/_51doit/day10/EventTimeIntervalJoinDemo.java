@@ -84,7 +84,7 @@ public class EventTimeIntervalJoinDemo {
 
         SingleOutputStreamOperator<Tuple5<Long, String, Integer, Long, String>> res = leftKeyedStream.intervalJoin(rightKeyedStream)
                 .between(Time.seconds(-1), Time.seconds(1)) //以当前时间为时间标准，向前1秒，向后1秒，可以join上
-                .lowerBoundExclusive() //前开后闭区间
+                .lowerBoundExclusive() //前开后闭区间(,]
                 .process(new ProcessJoinFunction<Tuple3<Long, String, Integer>, Tuple3<Long, String, String>, Tuple5<Long, String, Integer, Long, String>>() {
                     //当条件相同的数据，并且在一定的时间范围内
                     @Override
