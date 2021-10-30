@@ -8,6 +8,7 @@
         <outputRelativeToContentRoot value="true" />
         <module name="flink-scala" />
         <module name="flink-java" />
+        <module name="flink-sql" />
       </profile>
     </annotationProcessing>
     <bytecodeTargetLevel target="8" />

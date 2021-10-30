@@ -20,7 +20,7 @@ public class WordCount {
         //调用Source创建DataStream
         //yum install -y nc
         //nc -lk 8888
-        DataStream<String> lines = env.socketTextStream("localhost", 8888);
+        DataStream<String> lines = env.socketTextStream(args[0], Integer.parseInt(args[1]));
 
         //切分压平
         SingleOutputStreamOperator<String> words = lines.flatMap(new FlatMapFunction<String, String>() {
